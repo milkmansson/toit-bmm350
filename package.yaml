@@ -1,0 +1,4 @@
+name: bmm350
+description: Toit drvier for Bosch Sensortech BMM350 Magnetometer.
+environment:
+  sdk: ^2.0.0-alpha.189
