@@ -3,7 +3,7 @@ Toit driver for Bosch Sensortech BMM350 Magnetometer.  This device features
 I2C and I3C interfacing, although this driver currently only implments I2C.
 
 > [!WARNING]
-> **Status** Driver still under development.
+> **Status:** Driver still under development.
 
 
 

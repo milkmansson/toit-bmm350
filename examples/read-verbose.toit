@@ -7,7 +7,7 @@ import i2c
 import bmm350 show *
 import math
 
-READS := 100
+READS := 10
 SDA-PIN := 19
 SCL-PIN := 20
 
@@ -26,7 +26,8 @@ main:
   device := bus.device Bmm350.I2C-ADDRESS
   sensor := Bmm350 device
   print "Hardware ID: 0x$(%02x sensor.get-chip-id)"
-  print "Taking raw data (once per loop), do $READS reads, and display compensated & uncompensated reads, and magnitudes for both."
+  print "Taking raw data (once per loop), do $READS reads, and display compensated"
+  print "and uncompensated reads, include magnitudes for both, and die temperature."
   sleep --ms=1000
   READS.repeat:
     raw := sensor.read-raw-data

@@ -91,6 +91,10 @@ class Bmm350:
     AGGR-AVG-2-SAMPLES_: "2 Samples",
     AGGR-AVG-4-SAMPLES_: "4 Samples",
     AGGR-AVG-8-SAMPLES_: "8 Samples"}
+  static AVG-CLAMP-ODR-LOOKUP_ ::= {
+    AGGR-AVG-4-SAMPLES_: AGGR-ODR-100HZ_,
+    AGGR-AVG-2-SAMPLES_: AGGR-ODR-200HZ_,
+    AGGR-AVG-NONE_: AGGR-ODR-400HZ_}
 
   static AGGR-ODR-400HZ_    ::= 0x02
   static AGGR-ODR-200HZ_    ::= 0x03
@@ -111,13 +115,17 @@ class Bmm350:
     AGGR-ODR-6-25HZ_: "6.25Hz",
     AGGR-ODR-3-125HZ_: "3.125Hz",
     AGGR-ODR-1-5625HZ_: "1.5625Hz"}
+  static ODR-CLAMP-AVG-LOOKUP_ ::= {
+    AGGR-ODR-100HZ_: AGGR-AVG-4-SAMPLES_,
+    AGGR-ODR-200HZ_: AGGR-AVG-2-SAMPLES_,
+    AGGR-ODR-400HZ_: AGGR-AVG-NONE_}
 
   // Masks: $REG-PMU-CMD-AXIS-SET_
   static ENABLE-X_ ::= 0b00000001
   static ENABLE-Y_ ::= 0b00000010
   static ENABLE-Z_ ::= 0b00000100
 
-  // Masks: $REG-REG-PMU-CMD_
+  // Masks: $REG-PMU-CMD_
   static PMU-CMD-MODE-MASK_ ::= 0b00001111
   static PMU-CMD-MODE-SUSPEND_  ::= 0x00
   static PMU-CMD-MODE-NORMAL_   ::= 0x01
@@ -274,7 +282,7 @@ class Bmm350:
     write-register_ REG-OTP-CMD_ OTP-CMD-PWR-OFF-OTP_ --mask=OTP-CMD-CMD-MASK_
 
     // Configure Averaging and Output Data Rate (ODR)
-    configure-mag
+    configure-mag --avg=AGGR-AVG-8-SAMPLES_ --odr=AGGR-ODR-400HZ_
 
     // Enable 'Data Ready'
     set-data-ready-check true
@@ -319,14 +327,6 @@ class Bmm350:
     mask := (1 << bits) - 1
     v := value & mask
     return (v & sign) != 0 ? (v - (1 << bits)) : v
-
-  configure-mag --avg/int=AGGR-AVG-NONE_ --odr/int=AGGR-ODR-50HZ_ -> none:
-    assert: AGGR-AVG-LOOKUP_.contains avg
-    assert: AGGR-ODR-LOOKUP_.contains odr
-    avg-raw := avg << PMU-CMD-AGGR-AVG-MASK_.count-trailing-zeros
-    odr-raw := odr << PMU-CMD-AGGR-ODR-MASK_.count-trailing-zeros
-    write-register_ REG-PMU-CMD-AGGR-SET_ (avg-raw | odr-raw)
-    logger_.info "mag configured" --tags={"avg":AGGR-AVG-LOOKUP_[avg], "odr":AGGR-ODR-LOOKUP_[odr]}
 
   /**
   Reads one instance of raw data.
@@ -529,7 +529,74 @@ class Bmm350:
     write-register_ REG-PMU-CMD_ mode --mask=PMU-CMD-MODE-MASK_
     while is-pmu-cmd-busy_:
       sleep --ms=10
+    write-register_ REG-PMU-CMD_ PMU-CMD-MODE-UPD-OAE_ --mask=PMU-CMD-MODE-MASK_
+    while is-pmu-cmd-busy_:
+      sleep --ms=10
     logger_.info "mode configured" --tags={"mode":PMU-CMD-MODE-LOOKUP_[mode]} //, "mode illegal": is-pmu-cmd-illegal_}
+
+  /**
+  Get PMU Mode
+
+  Gets the value by looking at the 'effective' mode, not modes' own
+    configuration register.
+  */
+  get-odr -> int:
+    odr := read-register_ REG-PMU-CMD-STATUS-1_ --mask=CMD-STATUS-1-ODR-EFFECTIVE_
+    logger_.debug "effective odr" --tags={"odr":"$(%02x odr)","text":AGGR-ODR-LOOKUP_[odr]}
+    return odr
+
+  get-avg -> int:
+    avg := read-register_ REG-PMU-CMD-STATUS-1_ --mask=CMD-STATUS-1-AVG-EFFECTIVE_
+    logger_.debug "effective avg" --tags={"avg":"$(%02x avg)","text":AGGR-AVG-LOOKUP_[avg]}
+    return avg
+
+  set-odr odr/int=AGGR-ODR-50HZ_ -> none:
+    assert: AGGR-ODR-LOOKUP_.contains odr
+    write-register_ REG-PMU-CMD-AGGR-SET_ odr --mask=PMU-CMD-AGGR-ODR-MASK_
+    clamp-avg_ odr
+    update-aggr-values_
+    effective := get-odr
+
+  set-avg avg/int=AGGR-AVG-NONE_ -> none:
+    assert: AGGR-AVG-LOOKUP_.contains avg
+    write-register_ REG-PMU-CMD-AGGR-SET_ avg --mask=PMU-CMD-AGGR-AVG-MASK_
+    clamp-odr_ avg
+    update-aggr-values_
+    effective := get-avg
+
+  configure-mag --avg/int=AGGR-AVG-NONE_ --odr/int=AGGR-ODR-50HZ_ -> none:
+    set-avg avg
+    set-odr odr
+
+  update-aggr-values_ -> none:
+    start := Time.monotonic-us
+    write-register_ REG-PMU-CMD_ PMU-CMD-MODE-UPD-OAE_ --mask=PMU-CMD-MODE-MASK_
+    while is-pmu-cmd-busy_:
+      sleep --ms=10
+    finish := Time.monotonic-us - start
+    //logger_.debug "aggr value update complete" --tags={"us":"$finish"}
+
+  /*
+  Bosch clamps averaging at high ODR (e.g., 400 Hz forces no averaging;
+    200 Hz max avg 2; 100 Hz max avg 4.
+  */
+  clamp-avg_ target-odr/int -> none:
+    current-avg := read-register_ REG-PMU-CMD-STATUS-1_ --mask=CMD-STATUS-1-AVG-EFFECTIVE_
+    if ODR-CLAMP-AVG-LOOKUP_.contains target-odr:
+      if ODR-CLAMP-AVG-LOOKUP_[target-odr] > current-avg:
+        write-register_ REG-PMU-CMD-AGGR-SET_ ODR-CLAMP-AVG-LOOKUP_[target-odr] --mask=PMU-CMD-AGGR-AVG-MASK_
+        logger_.debug "aggr avg value clamped due to high ODR" --tags={"odr":AGGR-ODR-LOOKUP_[target-odr],"avg-clamped": AGGR-AVG-LOOKUP_[ODR-CLAMP-AVG-LOOKUP_[target-odr]]}
+
+  /*
+  Bosch clamps averaging at high ODR (e.g., 400 Hz forces no averaging;
+    200 Hz max avg 2; 100 Hz max avg 4.
+  */
+  clamp-odr_ target-avg/int -> none:
+    current-odr := read-register_ REG-PMU-CMD-STATUS-1_ --mask=CMD-STATUS-1-ODR-EFFECTIVE_
+    if AVG-CLAMP-ODR-LOOKUP_.contains target-avg:
+      if AVG-CLAMP-ODR-LOOKUP_[target-avg] < current-odr:
+        write-register_ REG-PMU-CMD-AGGR-SET_ AVG-CLAMP-ODR-LOOKUP_[target-avg] --mask=PMU-CMD-AGGR-ODR-MASK_
+        logger_.debug "aggr odr value clamped due to high avg" --tags={"avg":AGGR-AVG-LOOKUP_[target-avg],"odr-clamped": AGGR-ODR-LOOKUP_[AVG-CLAMP-ODR-LOOKUP_[target-avg]]}
 
   /**
   Reads and optionally masks/parses register data. (Little-endian.)
