@@ -99,7 +99,8 @@ suspend whenever it has to. A forced measurement ends back in suspend mode.
 
 ## Examples
 
-All examples use the pins from the wiring section.
+All examples use the pins from the wiring section.  Be sure to change them when
+required.
 
 - `read-simple.toit` prints 100 compensated readings.
 - `read-verbose.toit` prints raw and compensated readings with their strength,
