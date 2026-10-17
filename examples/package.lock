@@ -1,5 +1,27 @@
+sdk: ^2.0.0-alpha.146
 prefixes:
   bmm350: ..
+  pixel_display: toit-pixel-display
+  ssd1306: toit-ssd1306
 packages:
   ..:
     path: ..
+  toit-pixel-display:
+    url: github.com/toitware/toit-pixel-display
+    name: pixel_display
+    version: 2.11.0
+    hash: 59a4be9f0e6aa2321c6a032da44776f59af364b5
+    prefixes:
+      png-tools: toit-png-tools
+  toit-png-tools:
+    url: github.com/toitware/toit-png-tools
+    name: png-tools
+    version: 1.0.0
+    hash: ee472ac9d4333a138206f9d3a817d3c5432d6f87
+  toit-ssd1306:
+    url: github.com/toitware/toit-ssd1306
+    name: ssd1306
+    version: 2.0.1
+    hash: ee2e6e699daa86d961538775aaea642a839025b7
+    prefixes:
+      pixel_display: toit-pixel-display

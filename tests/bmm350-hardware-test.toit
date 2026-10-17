@@ -31,7 +31,7 @@ import math show sqrt
 import bmm350 show *
 import .test-helpers
 
-SDA-PIN ::= 19
+SDA-PIN ::= 21
 SCL-PIN ::= 20
 I2C-FREQUENCY ::= 400_000
 
@@ -142,8 +142,8 @@ main:
 
   run.check "I2C bus opens":
     bus = i2c.Bus
-        --sda=(gpio.Pin SDA-PIN)
-        --scl=(gpio.Pin SCL-PIN)
+        --sda=SDA-PIN
+        --scl=SCL-PIN
         --frequency=I2C-FREQUENCY
 
   run.check "chip answers at 0x$(%02x Bmm350.I2C-ADDRESS)":

@@ -32,5 +32,5 @@ main:
     field := sensor.read-mag-compensated
     heading := (math.atan2 field.y field.x) * 180.0 / math.PI
     if heading < 0.0: heading += 360.0
-    print "Heading $(%.0f heading) degrees"
+    print "Heading $(%d heading.round) degrees"
     sleep --ms=200

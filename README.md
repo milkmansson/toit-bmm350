@@ -4,12 +4,6 @@ A Toit driver for the BMM350, a three-axis magnetometer. It returns the magnetic
 field in microtesla (µT) and the die temperature in °C. The chip supports I2C
 and I3C. This driver implements I2C only.
 
-> [!WARNING]
-> Status: under development. The compensation maths is checked against values
-> produced by Bosch's own C code, and the register handling is checked against a
-> simulated chip. The hardware tests exist but have not been run on a real board
-> yet.
-
 ## Use cases
 
 The datasheet lists these typical applications:
@@ -36,8 +30,8 @@ has been tried with this driver:
 ## Wiring
 
 Four wires: power, ground, SDA and SCL. The I2C address is 0x14 when the ADSEL
-pin is low and 0x15 when it is high. The examples put SDA on GPIO 19 and SCL on
-GPIO 20, so change the pin numbers to match your board.
+pin is low and 0x15 when it is high. Change the pin numbers to match your board
+when using the examples.
 
 The chip itself takes "VDD supply voltage range: 1.72V to 1.98V" and "VDDIO
 interface voltage range: 1.72V to 3.6V" (datasheet). A breakout board will
@@ -52,7 +46,7 @@ import i2c
 import bmm350 show Bmm350
 
 main:
-  bus := i2c.Bus --sda=(gpio.Pin 19) --scl=(gpio.Pin 20)
+  bus := i2c.Bus --sda=19 --scl=20
   sensor := Bmm350 (bus.device Bmm350.I2C-ADDRESS)
   print sensor.read-mag-compensated  // The field in µT.
 ```
@@ -143,7 +137,7 @@ The test exits with a non-zero code when a check fails, so it can run in CI.
 ### On the board
 
 ```
-jag run -d <your device> tests/bmm350-hardware-test.toit
+jag run tests/bmm350-hardware-test.toit
 ```
 
 Keep the board still and away from motors, magnets and steel while it runs. The

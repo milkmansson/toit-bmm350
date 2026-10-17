@@ -8,15 +8,15 @@ import bmm350 show Bmm350
 import math
 
 READS := 10
-SDA-PIN := 19
+SDA-PIN := 21
 SCL-PIN := 20
 
 main:
   print
   print
   bus := i2c.Bus
-    --sda=gpio.Pin SDA-PIN
-    --scl=gpio.Pin SCL-PIN
+    --sda=SDA-PIN
+    --scl=SCL-PIN
     --frequency=400_000
 
   if not (bus.test Bmm350.I2C-ADDRESS):

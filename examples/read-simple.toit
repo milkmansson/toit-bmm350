@@ -14,8 +14,8 @@ main:
   print
   print
   bus := i2c.Bus
-    --sda=SDA-PIN // gpio.Pin SDA-PIN
-    --scl=SCL-PIN // gpio.Pin SCL-PIN
+    --sda=SDA-PIN
+    --scl=SCL-PIN
     --frequency=400_000
 
   if not (bus.test Bmm350.I2C-ADDRESS):
