@@ -32,7 +32,8 @@ has been tried with this driver:
 
 Four wires: power, ground, SDA and SCL. The I2C address is 0x14 when the ADSEL
 pin is low and 0x15 when it is high. Change the pin numbers to match your board
-when using the examples.
+when using the examples. A fifth wire, from the chip's INT pin to a free GPIO, is
+only needed for `data-ready-interrupt.toit` and the INT pin checks in the tests.
 
 The chip itself takes "VDD supply voltage range: 1.72V to 1.98V" and "VDDIO
 interface voltage range: 1.72V to 3.6V" (datasheet). A breakout board will
@@ -105,10 +106,12 @@ All examples use the pins from the wiring section.
 - `forced-mode.toit` takes one reading a second in forced mode.
 - `heading.toit` turns the X and Y field into a compass angle. It assumes the
   board is level and has no calibration.
-- `compass-display.toit` shows a compass dial and an X-Y scatter plot on a
-  128x64 SSD1306 display. See the next section.
 - `calibrate.toit` collects readings while you turn the board, then prints a
   calibration to paste into your code.
+- `data-ready-interrupt.toit` waits on the INT pin and reads a sample each time
+  the chip says one is ready. It needs INT wired to GPIO 7.
+- `compass-display.toit` shows a compass dial and an X-Y scatter plot on a
+  128x64 SSD1306 display. See the next section.
 
 ## Calibration and the display demo
 
@@ -122,9 +125,12 @@ yet:
 import bmm350.calibration show MagCalibration
 
 CALIBRATION ::= MagCalibration
-    --offset-x=12.0
-    --offset-y=-30.0
-    --offset-z=7.5
+    --offset-x=-103.442
+    --offset-y=31.554
+    --offset-z=-177.869
+    --scale-x=1.0779
+    --scale-y=1.0861
+    --scale-z=0.8684
 
 main:
   ...
@@ -138,9 +144,9 @@ and a difference in axis sensitivity in a simple way. It does not fit a tilted
 ellipsoid.
 
 The two display examples put SDA on GPIO 21 and SCL on GPIO 20, with the
-display on the same I2C bus as the sensor. They need two more packages,
-`pixel_display` and `ssd1306`. Run `toit pkg install` in `examples` once. To
-calibrate:
+display on the same I2C bus as the sensor. (They need two more packages,
+`pixel_display` and `ssd1306`. Run `toit pkg install` in `examples` once, after
+cloning this repo.) To calibrate:
 
 1. Mount the board where it will stay, with its wires and battery in place.
 2. Run `calibrate.toit` and turn the board through every orientation for 40
@@ -149,8 +155,9 @@ calibrate:
    says "Point N", then a quarter turn clockwise, towards east, when it says
    "Point E". Use a compass you trust to find north, away from steel and magnets.
    This works out `ROTATE-DEGREES` and `MIRROR`.
-4. Copy the lines it prints into `compass-display.toit`. The display also steps
-   through the numbers after "Done", for when the board runs from a battery.
+4. Copy the lines it prints in the console into `compass-display.toit`. The
+   display also steps through the numbers after "Done", for when the board runs
+   from a battery.
 5. Run `compass-display.toit`. Turn the board flat on a table. The needle
    should keep pointing the same way in the room, and the dots should trace
    a ring.
@@ -186,8 +193,9 @@ They are described in [tests/README.md](tests/README.md).
   the calibration section for a separate helper.
 - Not implemented: I3C, the chip's self-test, the in-band interrupt, pad drive
   strength, the I2C watchdog and the always-on sensortime option.
-- The INT pin setters are only checked for the right register bits. No test has
-  watched the pin itself.
+- The mock test only checks that the INT pin setters write the right register
+  bits. The hardware test watches the pin itself when INT is wired. See
+  [tests/README.md](tests/README.md).
 
 ## Links
 

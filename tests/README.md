@@ -62,6 +62,17 @@ averaging pair, the sensortime step at six rates, the chip clock against the
 ESP32 clock, noise at 100 Hz, forced mode, axis switching, magnetic reset and
 soft reset.
 
+If the chip's INT pin is wired to the ESP32, the test also watches the pin. Set
+`INT-PIN` at the top of the file to the ESP32 pin it is wired to (7 by default),
+or to `null` if INT is not wired. The checks cover:
+
+- the pin staying low while the INT output is off,
+- latched mode, where the pin rises and stays high until the status is read,
+- pulsed mode, where the pin must not stay high,
+- active-low polarity,
+- open-drain output with the ESP32's internal pull-up,
+- the interrupt count over three seconds against the data rate.
+
 Each line ends in PASS, FAIL, WARN or SKIP. A FAIL points at the driver, the
 wiring or the chip. A WARN means a value looks odd without being wrong, usually
 because of the surroundings. Limits from the datasheet are named in the source.

@@ -6,7 +6,8 @@
 Self-checking tests for a BMM350 wired to an ESP32. Needs real hardware.
 
 Wire the module's SDA, SCL, power and ground to the ESP32, edit the pin numbers
-  below if yours differ, and run with Jaguar:
+  below if yours differ, and run with Jaguar. To test the INT pin too, wire it to
+  the pin named by $INT-PIN. Without that wire, set $INT-PIN to null:
 ```
 jag run -d <your device> tests/bmm350-hardware-test.toit
 ```
@@ -24,6 +25,7 @@ Set $ROTATE-TEST to true to add a hands-on check. It asks you to turn the board
   through all orientations and checks that the field strength stays constant.
 */
 
+import gpio
 import i2c
 import log
 import math show sqrt
@@ -33,6 +35,9 @@ import .test-helpers
 SDA-PIN ::= 21
 SCL-PIN ::= 20
 I2C-FREQUENCY ::= 400_000
+
+/** The ESP32 pin that the chip's INT pin is wired to, or null if it is not wired. */
+INT-PIN/int? ::= 7
 
 /** Set to true to run the hands-on rotation check. */
 ROTATE-TEST ::= false
@@ -160,6 +165,11 @@ main:
     return
 
   run-hardware-tests sensor run
+  if INT-PIN:
+    run-int-pin-tests sensor run
+  else:
+    run.section "INT pin"
+    run.skip "INT pin" "set INT-PIN to the pin the chip's INT line is wired to"
   run.finish
 
 /**
@@ -320,6 +330,118 @@ run-hardware-tests sensor/Bmm350 run/TestRun -> none:
       check-rotation sensor run
   else:
     run.skip "rotation" "set ROTATE-TEST to true to run it"
+
+// Opens the INT pin as an input for the block, and closes it again afterwards.
+with-int-pin --pull-up/bool=false --pull-down/bool=false [block] -> none:
+  pin := gpio.Pin.in (INT-PIN as int)
+      --pull-up=pull-up
+      --pull-down=pull-down
+  try:
+    block.call pin
+  finally:
+    pin.close
+
+// Waits up to the given time for the pin to reach a level, and says whether it
+// did.
+reaches-level pin/gpio.Pin level/int --ms/int -> bool:
+  error := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+    with-timeout (Duration --ms=ms): pin.wait-for level
+  return error == null
+
+// Sets how the INT pin reports data ready.
+configure-int sensor/Bmm350 --high/bool --latched/bool --push-pull/bool=true -> none:
+  sensor.set-data-ready-check true
+  sensor.set-int-pin-push-pull push-pull
+  sensor.set-int-pin-polarity high
+  sensor.set-int-latched-mode latched
+  sensor.set-int-pin true
+
+/**
+Checks the chip's INT pin with a wire from it to the ESP32.
+
+Needs $INT-PIN to be wired. It is separate from $run-hardware-tests because the
+  simulated chip has no pin.
+
+The slow rate in most checks leaves time between samples to look at the pin
+  before the next one arrives. It is a choice made for this test.
+*/
+run-int-pin-tests sensor/Bmm350 run/TestRun -> none:
+  run.section "INT pin (GPIO $INT-PIN)"
+
+  run.check "the pin stays low while the INT output is off":
+    sensor.configure-mag --odr=Bmm350.ODR-100HZ --avg=Bmm350.AVG-NONE
+    sensor.set-data-ready-check true
+    sensor.set-int-pin false
+    with-int-pin --pull-down: | pin |
+      end := Time.monotonic-us + 300_000
+      while Time.monotonic-us < end:
+        if pin.get == 1: throw "the pin went high with the INT output off"
+
+  run.check "latched, active high: the pin rises and stays high until the status is read":
+    sensor.configure-mag --odr=Bmm350.ODR-12-5HZ --avg=Bmm350.AVG-NONE
+    configure-int sensor --high --latched
+    with-int-pin --pull-down: | pin |
+      require (reaches-level pin 1 --ms=500) --message="the pin never went high"
+      sleep --ms=20
+      require-equals 1 pin.get
+      // Reading the status clears the flag, and the pin should follow.
+      sensor.is-data-ready
+      require-equals 0 pin.get
+
+  run.check "pulsed, active high: the pin does not stay high":
+    sensor.configure-mag --odr=Bmm350.ODR-12-5HZ --avg=Bmm350.AVG-NONE
+    configure-int sensor --high --no-latched
+    with-int-pin --pull-down: | pin |
+      high := 0
+      total := 0
+      end := Time.monotonic-us + 600_000
+      while Time.monotonic-us < end:
+        total++
+        if pin.get == 1: high++
+      print "        high for $high of $total looks at the pin"
+      if high * 2 > total: throw "the pin was high for $high of $total looks, so it behaves as latched"
+
+  run.check "active low: the pin idles high and drops on data ready":
+    sensor.configure-mag --odr=Bmm350.ODR-12-5HZ --avg=Bmm350.AVG-NONE
+    configure-int sensor --no-high --latched
+    with-int-pin --pull-down: | pin |
+      sensor.is-data-ready
+      require-equals 1 pin.get
+      require (reaches-level pin 0 --ms=500) --message="the pin never went low"
+
+  run.check "open drain, active low: the ESP32 pull-up is enough":
+    sensor.configure-mag --odr=Bmm350.ODR-12-5HZ --avg=Bmm350.AVG-NONE
+    configure-int sensor --no-high --latched --no-push-pull
+    with-int-pin --pull-up: | pin |
+      sensor.is-data-ready
+      require-equals 1 pin.get
+      require (reaches-level pin 0 --ms=500) --message="the pin never went low"
+
+  run.check "interrupts arrive at the data rate":
+    odr := Bmm350.ODR-50HZ
+    sensor.configure-mag --odr=odr --avg=Bmm350.AVG-NONE
+    configure-int sensor --high --latched
+    with-int-pin --pull-down: | pin |
+      count := 0
+      first-us := 0
+      last-us := 0
+      end := Time.monotonic-us + 3_000_000
+      while Time.monotonic-us < end:
+        if not (reaches-level pin 1 --ms=500): throw "no interrupt for 500 ms"
+        // Reading the sample reads the status, which clears the pin.
+        sensor.read-raw-data
+        last-us = Time.monotonic-us
+        if count == 0: first-us = last-us
+        count++
+      expected := Bmm350.odr-to-hz odr
+      rate := (count - 1) / ((last-us - first-us) / 1_000_000.0)
+      print "        $count interrupts in 3 s, $(%.2f rate) Hz against $(%.2f expected) Hz"
+      error := (rate / expected - 1.0).abs
+      if error > RATE-FAIL-RATIO: throw "the interrupt rate is off by $(%.1f error * 100) %"
+      if error > RATE-WARN-RATIO:
+        run.warn "interrupt rate" "off by $(%.1f error * 100) %. The datasheet says typically within 2 %."
+
+  sensor.set-int-pin false
 
 // Watches the field while the user turns the board, and compares how constant
 // the strength stays with and without the OTP compensation.
