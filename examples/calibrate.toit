@@ -102,7 +102,7 @@ SCATTER-RANGE ::= 80
 PLOT-ROTATION ::= 0
 
 // Reverses the plot's Y axis, before the turn above.
-PLOT-MIRROR ::= false
+PLOT-MIRROR ::= true
 
 main:
   bus := open-bus

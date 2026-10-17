@@ -2,12 +2,6 @@
 // Use of this source code is governed by a Zero-Clause BSD license that can
 // be found in the EXAMPLES_LICENSE file.
 
-// Drawing helpers shared by compass-display.toit and calibrate.toit.
-//
-// They are written for a 128x64 monochrome SSD1306 or SSD1308 on I2C. The
-// pixel_display package has no line call, so the lines here are drawn pixel by
-// pixel with Bresenham's algorithm.
-
 import font show Font
 import gpio
 import i2c
@@ -16,6 +10,14 @@ import pixel-display show *
 import pixel-display.element show CustomElement
 import pixel-display.two-color show WHITE BLACK
 import ssd1306 show Ssd1306
+
+/**
+Drawing helpers shared by compass-display.toit and calibrate.toit.
+
+They are written for a 128x64 monochrome SSD1306 or SSD1308 on I2C. The
+  pixel_display package has no line call, so the lines here are drawn pixel by
+  pixel with Bresenham's algorithm.
+*/
 
 SDA-PIN ::= 21
 SCL-PIN ::= 20

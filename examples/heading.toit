@@ -2,18 +2,20 @@
 // Use of this source code is governed by a Zero-Clause BSD license that can
 // be found in the EXAMPLES_LICENSE file.
 
-// A bare-bones compass: the angle of the field in the X-Y plane.
-//
-// This only works while the board is held level, and it has no calibration for
-// nearby steel or magnets. Which way the board points at 0 degrees depends on
-// how the chip sits on your breakout.
+/**
+  A bare-bones compass: the angle of the field in the X-Y plane.
+
+  This only works while the board is held level, and it has no calibration for
+  nearby steel or magnets. Which way the board points at 0 degrees depends on
+  how the chip sits on your breakout.
+*/
 
 import i2c
 import math
 import bmm350 show Bmm350
 
-SDA-PIN ::= 19
-SCL-PIN ::= 20
+SDA-PIN := 21
+SCL-PIN := 20
 
 main:
   bus := i2c.Bus

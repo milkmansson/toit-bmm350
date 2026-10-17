@@ -4,7 +4,8 @@
 
 // A compass dial and an X-Y scatter plot on a 128x64 SSD1306 display.
 //
-// The sensor and the display share one I2C bus: SDA on GPIO 21, SCL on GPIO 20.
+// The sensor and the display share one I2C bus.
+//
 // Hold the board flat and turn it. The needle should keep pointing the same
 // way in the room while the board turns under it, and the dots on the right
 // should trace a ring.
@@ -50,10 +51,10 @@ SCATTER-RANGE ::= 80
 // Turns only the scatter plot, clockwise, by 0, 90, 180 or 270 degrees. The
 // plot normally shows the chip's X axis to the right and its Y axis up. The
 // dial is not affected.
-PLOT-ROTATION ::= 0
+PLOT-ROTATION ::= 90
 
 // Reverses the plot's Y axis, before the turn above.
-PLOT-MIRROR ::= false
+PLOT-MIRROR ::= true
 
 main:
   bus := open-bus

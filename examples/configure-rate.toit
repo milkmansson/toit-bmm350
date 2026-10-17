@@ -8,8 +8,8 @@
 import i2c
 import bmm350 show Bmm350
 
-SDA-PIN ::= 19
-SCL-PIN ::= 20
+SDA-PIN := 21
+SCL-PIN := 20
 
 main:
   bus := i2c.Bus
