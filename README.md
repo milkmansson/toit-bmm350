@@ -158,34 +158,13 @@ display on the same I2C bus as the sensor. (They need two more packages,
 `pixel_display` and `ssd1306`. Run `toit pkg install` in `examples` once, after
 cloning this repo.) To calibrate:
 
-1. Mount the board where it will stay, with its wires and battery in place.
-2. Run `calibrate.toit` and turn the board through every orientation for 40
-   seconds. The scatter plot shows the raw X and Y readings.
-3. Hold the board level with the top of the display towards north when it
-   says "Point N", then a quarter turn clockwise, towards east, when it says
-   "Point E". Use a compass you trust to find north, away from steel and magnets.
-   This works out `ROTATE-DEGREES` and `MIRROR`.
-4. Copy the lines it prints in the console into `compass-display.toit`. The
-   display also steps through the numbers after "Done", for when the board runs
-   from a battery.
-5. Run `compass-display.toit`. Turn the board flat on a table. The needle
-   should keep pointing the same way in the room, and the dots should trace
-   a ring.
+| Steps | Display |
+| -- | -- |
+| 1. Mount the board where it will stay, with its wires and battery in place. <br> 2. Run `calibrate.toit` and turn the board through every orientation for 40 seconds. The scatter plot shows the raw X and Y readings. <br>3. Hold the board level with the top of the display towards north when it says "Point N", then a quarter turn clockwise, towards east, when it says "Point E". Use a compass you trust to find north, away from steel and magnets.     This works out `ROTATE-DEGREES` and `MIRROR`. | ![calibrate.toit while turning the board](examples/images/calibrate-turn.png) <br>![calibrate.toit asking for the north pose](examples/images/calibrate-pose.png) <br> ![calibrate.toit when it is done](examples/images/calibrate-done.png) |
+| 4. Copy the lines it prints in the console into `compass-display.toit`. The display also shows all the values after "Done", one by one, for when the board runs from a battery. <br> 5. Run `compass-display.toit`. Turn the board flat on a table. The needle should keep pointing the same way in the room, and the dots should trace a ring. | ![compass-display.toit with the dial and the scatter plot](examples/images/compass-display.png) |
 
-These pictures show the screens as the code draws them, at three times the
-size. They come from a stand-in display with made-up readings, not from a
-photo of a real module, so your traces will differ. The first pair is
-`calibrate.toit` while you turn the board and while it checks the result. The
-second pair is a pose and the last screen. The last picture is
-`compass-display.toit`.
-
-![calibrate.toit while turning the board](examples/images/calibrate-turn.png)
-![calibrate.toit checking the result](examples/images/calibrate-check.png)
-
-![calibrate.toit asking for the north pose](examples/images/calibrate-pose.png)
-![calibrate.toit when it is done](examples/images/calibrate-done.png)
-
-![compass-display.toit with the dial and the scatter plot](examples/images/compass-display.png)
+They come from a stand-in display with made-up readings, not from a
+photo of a real module, so your traces will differ.
 
 The dial assumes that the board is level, that the chip's +X axis points to
 the top of the display, and that Z points up. Those are assumptions, and the
@@ -204,7 +183,7 @@ underneath each other. If the picture is a mirror image, set `DISPLAY-FLIP` to
 A calibration belongs to the whole assembly, not only to the chip. Another
 board built the same way will probably need its own numbers. `to-map` and
 `from-map` turn a calibration into a map of numbers, which makes it easy to
-keep one per device in a file or in flash.
+keep one per device in a file, flash, or a [flash backed bucket](https://libs.toit.io/system/storage/class-Bucket) (stored on the ESP32 directly).
 
 ## Tests
 
