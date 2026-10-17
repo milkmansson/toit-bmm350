@@ -87,7 +87,7 @@ CHECK-SECONDS ::= 10
 // is how the picture looked before this setting existed. This turns the screen
 // only. The orientation poses at the end measure how the chip sits relative to
 // the dial, which is a separate thing.
-DISPLAY-ROTATION ::= 90
+DISPLAY-ROTATION ::= 0
 
 // Mirrors the picture top to bottom. Some display modules need it, and turning
 // cannot fix a mirror image.
@@ -99,7 +99,7 @@ SCATTER-RANGE ::= 80
 // plot normally shows the chip's X axis to the right and its Y axis up, which
 // may not match how the chip sits on your board. The dial and the poses are not
 // affected.
-PLOT-ROTATION ::= 0
+PLOT-ROTATION ::= 90
 
 // Reverses the plot's Y axis, before the turn above.
 PLOT-MIRROR ::= true
