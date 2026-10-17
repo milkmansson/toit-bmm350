@@ -107,12 +107,14 @@ All examples use the pins from the wiring section.
 - `forced-mode.toit` takes one reading a second in forced mode.
 - `heading.toit` turns the X and Y field into a compass angle. It assumes the
   board is level and has no calibration.
-- `calibrate.toit` collects readings while you turn the board, then prints a
-  calibration to paste into your code.
 - `data-ready-interrupt.toit` waits on the INT pin and reads a sample each time
   the chip says one is ready. It needs INT wired to GPIO 7.
+- `calibrate.toit` collects readings while you turn the board, then prints a
+  calibration to paste into your code. Shows the calibrated outcome an X-Y
+  scatter plot on a 128x64 SSD1306 display.
 - `compass-display.toit` shows a compass dial and an X-Y scatter plot on a
-  128x64 SSD1306 display. See the next section.
+  128x64 SSD1306 display. Requires the outputs of `calibrate.toit`.  See the
+  next section.
 
 ## Calibration and the display demo
 
