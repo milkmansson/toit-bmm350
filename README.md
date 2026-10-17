@@ -172,6 +172,21 @@ cloning this repo.) To calibrate:
    should keep pointing the same way in the room, and the dots should trace
    a ring.
 
+These pictures show the screens as the code draws them, at three times the
+size. They come from a stand-in display with made-up readings, not from a
+photo of a real module, so your traces will differ. The first pair is
+`calibrate.toit` while you turn the board and while it checks the result. The
+second pair is a pose and the last screen. The last picture is
+`compass-display.toit`.
+
+![calibrate.toit while turning the board](examples/images/calibrate-turn.png)
+![calibrate.toit checking the result](examples/images/calibrate-check.png)
+
+![calibrate.toit asking for the north pose](examples/images/calibrate-pose.png)
+![calibrate.toit when it is done](examples/images/calibrate-done.png)
+
+![compass-display.toit with the dial and the scatter plot](examples/images/compass-display.png)
+
 The dial assumes that the board is level, that the chip's +X axis points to
 the top of the display, and that Z points up. Those are assumptions, and the
 real directions depend on your breakout. `calibrate.toit` measures
