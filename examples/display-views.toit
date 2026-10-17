@@ -20,8 +20,21 @@ import ssd1306 show Ssd1306
 SDA-PIN ::= 21
 SCL-PIN ::= 20
 
+// The size of the display, as the driver sees it, before any turn.
 DISPLAY-WIDTH ::= 128
 DISPLAY-HEIGHT ::= 64
+
+/** Whether a $rotation of 90 or 270 degrees gives a tall picture. */
+is-portrait rotation/int -> bool:
+  return rotation == 90 or rotation == 270
+
+/** The width of the picture in pixels after the $rotation. */
+picture-width rotation/int -> int:
+  return (is-portrait rotation) ? DISPLAY-HEIGHT : DISPLAY-WIDTH
+
+/** The height of the picture in pixels after the $rotation. */
+picture-height rotation/int -> int:
+  return (is-portrait rotation) ? DISPLAY-WIDTH : DISPLAY-HEIGHT
 
 /**
 Opens the I2C bus on $SDA-PIN and $SCL-PIN.
@@ -31,21 +44,45 @@ The sensor and the display share this bus. Their addresses differ, so they
 */
 open-bus -> i2c.Bus:
   return i2c.Bus
-      --sda=gpio.Pin SDA-PIN
-      --scl=gpio.Pin SCL-PIN
+      --sda=SDA-PIN
+      --scl=SCL-PIN
       --frequency=400_000
 
 /**
 Returns a display for the SSD1306 on the $bus, or throws if none answers.
 
-If the picture is upside down or mirrored, try the `--flip` option of the
-  driver. If black and white are swapped, remove `--inverted` below.
+The $rotation turns the picture clockwise by 0, 90, 180 or 270 degrees. 0 is
+  the orientation that these examples used before the setting existed. If your
+  picture is turned, try the other values. With 90 or 270 the picture is tall,
+  with 64 pixels across and 128 down, and the examples lay themselves out to
+  match.
+
+The $flip option mirrors the picture top to bottom in the driver's own frame.
+  Some display modules need it. Try it if the picture is a mirror image, which
+  turning cannot fix.
+
+If black and white are swapped, add `--inverse` to the driver call below. That
+  is the driver's option, and it is different from the turn.
 */
-open-display bus/i2c.Bus -> PixelDisplay:
+open-display bus/i2c.Bus --rotation/int=0 --flip/bool=false -> PixelDisplay:
+  if not [0, 90, 180, 270].contains rotation:
+    throw "Display rotation must be 0, 90, 180 or 270, but was $rotation"
   if not (bus.test Ssd1306.I2C-ADDRESS):
     throw "No SSD1306 display found on the bus. Check the wiring."
-  driver := Ssd1306.i2c (bus.device Ssd1306.I2C-ADDRESS)
-  return PixelDisplay.two-color --inverted driver
+  driver := Ssd1306.i2c (bus.device Ssd1306.I2C-ADDRESS) --flip=flip
+  return display-for driver rotation
+
+/**
+Returns a display on the $driver, with the picture turned by the $rotation.
+
+The pixel_display package turns a picture with two options. A portrait picture
+  is turned a quarter, and `--inverted` turns it a further half. The pairs
+  below were found by drawing each rotation and comparing the results.
+*/
+display-for driver/AbstractDriver rotation/int -> PixelDisplay:
+  portrait := is-portrait rotation
+  inverted := rotation == 0 or rotation == 270
+  return PixelDisplay.two-color --portrait=portrait --inverted=inverted driver
 
 /** Draws a one pixel dot. */
 draw-dot_ canvas/Canvas x/int y/int -> none:
@@ -141,6 +178,8 @@ class ScatterView extends CustomElement:
   width_/int
   height_/int
   range_/float
+  rotate-degrees_/int
+  mirror_/bool
   points-x_/List
   points-y_/List
   next_/int := 0
@@ -153,11 +192,28 @@ class ScatterView extends CustomElement:
 
   The edge of the plot stands for $range microtesla from zero. The plot keeps
     the latest $keep points.
+
+  The plot normally shows the chip's X axis to the right and its Y axis up.
+    With $mirror the Y axis is reversed first. Then $rotate-degrees turns the
+    plot clockwise by 0, 90, 180 or 270 degrees. This changes the plot only,
+    not the rest of the picture.
   */
-  constructor --x/int=64 --y/int=0 --width/int=64 --height/int=48 --range/num=80 --keep/int=60:
+  constructor
+      --x/int=64
+      --y/int=0
+      --width/int=64
+      --height/int=48
+      --range/num=80
+      --keep/int=60
+      --rotate-degrees/int=0
+      --mirror/bool=false:
+    if not [0, 90, 180, 270].contains rotate-degrees:
+      throw "rotate-degrees must be 0, 90, 180 or 270"
     width_ = width
     height_ = height
     range_ = range.to-float
+    rotate-degrees_ = rotate-degrees
+    mirror_ = mirror
     points-x_ = List keep: 0
     points-y_ = List keep: 0
     super --x=x --y=y --w=width --h=height
@@ -166,8 +222,20 @@ class ScatterView extends CustomElement:
   add field-x/num field-y/num -> none:
     half-w := width_ / 2
     half-h := height_ / 2
-    points-x_[next_] = half-w + ((field-x / range_) * half-w).round
-    points-y_[next_] = half-h - ((field-y / range_) * half-h).round
+    plot-x := field-x
+    plot-y := mirror_ ? -field-y : field-y
+    // Turn clockwise on the plot, where X is right and Y is up.
+    if rotate-degrees_ == 90:
+      plot-x = plot-y
+      plot-y = -field-x
+    else if rotate-degrees_ == 180:
+      plot-x = -plot-x
+      plot-y = -plot-y
+    else if rotate-degrees_ == 270:
+      plot-x = -plot-y
+      plot-y = field-x
+    points-x_[next_] = half-w + ((plot-x / range_) * half-w).round
+    points-y_[next_] = half-h - ((plot-y / range_) * half-h).round
     next_ = (next_ + 1) % points-x_.size
     if filled_ < points-x_.size: filled_++
     invalidate

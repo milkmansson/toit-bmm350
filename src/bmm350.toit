@@ -20,12 +20,11 @@ The constructor boots the chip, loads its factory trim values, and starts
   that, $read-mag-compensated returns a temperature-corrected field reading:
 
 ```
-import gpio
 import i2c
 import bmm350
 
 main:
-  bus := i2c.Bus --sda=(gpio.Pin 19) --scl=(gpio.Pin 20)
+  bus := i2c.Bus --sda=19 --scl=20
   sensor := bmm350.Bmm350 (bus.device bmm350.Bmm350.I2C-ADDRESS)
   print sensor.read-mag-compensated
 ```

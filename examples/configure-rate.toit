@@ -5,7 +5,6 @@
 // Picks an output data rate and an averaging setting, then reads back what the
 // chip uses. Averaging lowers noise at the cost of current.
 
-import gpio
 import i2c
 import bmm350 show Bmm350
 
@@ -14,8 +13,8 @@ SCL-PIN ::= 20
 
 main:
   bus := i2c.Bus
-    --sda=gpio.Pin SDA-PIN
-    --scl=gpio.Pin SCL-PIN
+    --sda=SDA-PIN
+    --scl=SCL-PIN
     --frequency=400_000
 
   if not (bus.test Bmm350.I2C-ADDRESS):

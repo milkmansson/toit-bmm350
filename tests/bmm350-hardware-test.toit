@@ -24,7 +24,6 @@ Set $ROTATE-TEST to true to add a hands-on check. It asks you to turn the board
   through all orientations and checks that the field strength stays constant.
 */
 
-import gpio
 import i2c
 import log
 import math show sqrt

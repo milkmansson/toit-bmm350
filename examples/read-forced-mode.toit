@@ -2,13 +2,14 @@
 // Use of this source code is governed by a Zero-Clause BSD license that can
 // be found in the EXAMPLES_LICENSE file.
 
-// Takes one reading a second in forced mode. Between readings the chip sits in
-// suspend mode, which suits battery projects that only need an occasional
-// reading.
-
-import gpio
 import i2c
 import bmm350 show Bmm350
+
+/**
+  Takes one reading a second in forced mode. Between readings the chip sits in
+  suspend mode, which suits battery projects that only need an occasional
+  reading.
+*/
 
 SDA-PIN := 21
 SCL-PIN := 20

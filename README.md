@@ -42,7 +42,6 @@ power pin.
 ## Quick start
 
 ```
-import gpio
 import i2c
 import bmm350 show Bmm350
 
@@ -146,16 +145,29 @@ calibrate:
 1. Mount the board where it will stay, with its wires and battery in place.
 2. Run `calibrate.toit` and turn the board through every orientation for 40
    seconds. The scatter plot shows the raw X and Y readings.
-3. Copy the line it prints into `compass-display.toit`.
-4. Run `compass-display.toit`. Turn the board flat on a table. The needle
+3. Hold the board level with the top of the display towards north when it
+   says "Point N", then a quarter turn clockwise, towards east, when it says
+   "Point E". Use a compass you trust to find north, away from steel and magnets.
+   This works out `ROTATE-DEGREES` and `MIRROR`.
+4. Copy the lines it prints into `compass-display.toit`. The display also steps
+   through the numbers after "Done", for when the board runs from a battery.
+5. Run `compass-display.toit`. Turn the board flat on a table. The needle
    should keep pointing the same way in the room, and the dots should trace
    a ring.
 
 The dial assumes that the board is level, that the chip's +X axis points to
 the top of the display, and that Z points up. Those are assumptions, and the
-real directions depend on your breakout. Change `ROTATE-DEGREES` in
-`compass-display.toit` until the needle behaves. If the picture is upside down,
-add `--flip` to the SSD1306 driver in `display-views.toit`.
+real directions depend on your breakout. `calibrate.toit` measures
+`ROTATE-DEGREES` and `MIRROR` for you from the two poses. The mirror test
+rests on my assumption that a clockwise turn raises the field angle by 90
+degrees when the chip's Z axis points up. If the needle still misbehaves, change
+`ROTATE-DEGREES` or `MIRROR` by hand. If the picture on the screen
+is turned, set `DISPLAY-ROTATION` to 90, 180 or 270 in `calibrate.toit` and
+`compass-display.toit`. It turns the picture clockwise from how it looked before
+the setting existed, and a tall picture (90 or 270) puts the parts of the screen
+underneath each other. If the picture is a mirror image, set `DISPLAY-FLIP` to
+`true`. These two settings are about the screen, and `ROTATE-DEGREES` and
+`MIRROR` are about the chip.
 
 A calibration belongs to the whole assembly, not only to the chip. Another
 board built the same way will probably need its own numbers. `to-map` and
