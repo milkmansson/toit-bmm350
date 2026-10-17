@@ -17,8 +17,9 @@ The datasheet lists these typical applications:
 Some ideas that go beyond the datasheet's list. They are suggestions, and none
 has been tried with this driver:
 
-- A compass or heading indicator. You will need your own calibration for steel
-  and magnets near the sensor, because the driver does not provide one.
+- A compass or heading indicator. You will need a calibration for steel and
+  magnets near the sensor. The driver does not apply one, and `src/calibration.toit`
+  is a helper for making one.
 - Sensing a magnet, for example on a lid, a door or a knob. The datasheet gives
   the field range as "±2000µT".
 - A magnetic joystick or position sensor, with a magnet on the moving part.
@@ -105,6 +106,61 @@ All examples use the pins from the wiring section.
 - `forced-mode.toit` takes one reading a second in forced mode.
 - `heading.toit` turns the X and Y field into a compass angle. It assumes the
   board is level and has no calibration.
+- `compass-display.toit` shows a compass dial and an X-Y scatter plot on a
+  128x64 SSD1306 display. See the next section.
+- `calibrate.toit` collects readings while you turn the board, then prints a
+  calibration to paste into your code.
+
+## Calibration and the display demo
+
+The chip's own trim values do not remove what the rest of the board adds to
+the field. A magnet, a steel screw or a wire with current in it shifts the
+reading by an amount that turns with the board. `src/calibration.toit` has two
+small classes for that. It is a separate import, and the driver does not use it
+yet:
+
+```
+import bmm350.calibration show MagCalibration
+
+CALIBRATION ::= MagCalibration
+    --offset-x=12.0
+    --offset-y=-30.0
+    --offset-z=7.5
+
+main:
+  ...
+  field := CALIBRATION.apply sensor.read-mag-compensated
+```
+
+`MagCalibrator` collects readings and works out the offsets and the axis
+scales with the min/max method. It is a common technique, and it comes from
+neither the datasheet nor Bosch. It handles a steady offset (hard-iron) well,
+and a difference in axis sensitivity in a simple way. It does not fit a tilted
+ellipsoid.
+
+The two display examples put SDA on GPIO 21 and SCL on GPIO 20, with the
+display on the same I2C bus as the sensor. They need two more packages,
+`pixel_display` and `ssd1306`. Run `toit pkg install` in `examples` once. To
+calibrate:
+
+1. Mount the board where it will stay, with its wires and battery in place.
+2. Run `calibrate.toit` and turn the board through every orientation for 40
+   seconds. The scatter plot shows the raw X and Y readings.
+3. Copy the line it prints into `compass-display.toit`.
+4. Run `compass-display.toit`. Turn the board flat on a table. The needle
+   should keep pointing the same way in the room, and the dots should trace
+   a ring.
+
+The dial assumes that the board is level, that the chip's +X axis points to
+the top of the display, and that Z points up. Those are assumptions, and the
+real directions depend on your breakout. Change `ROTATE-DEGREES` in
+`compass-display.toit` until the needle behaves. If the picture is upside down,
+add `--flip` to the SSD1306 driver in `display-views.toit`.
+
+A calibration belongs to the whole assembly, not only to the chip. Another
+board built the same way will probably need its own numbers. `to-map` and
+`from-map` turn a calibration into a map of numbers, which makes it easy to
+keep one per device in a file or in flash.
 
 ## Tests
 
@@ -134,6 +190,10 @@ gcc -std=gnu99 -I../../.reference -o bmm350-golden bmm350-golden.c -lm
 
 The test exits with a non-zero code when a check fails, so it can run in CI.
 
+`tests/calibration-test.toit` checks the calibration maths without any
+hardware. It builds readings from a sphere with a known offset and known axis
+sensitivities, and checks that the calibrator finds them again.
+
 ### On the board
 
 ```
@@ -160,7 +220,8 @@ each axis's range, which is a starting point for your own hard-iron calibration.
 ## Limits
 
 - The datasheet gives a zero-field offset drift of "±25" µT before or after
-  soldering. Compass work needs a calibration that this driver does not do.
+  soldering. Compass work needs a calibration, which this driver does not apply. See
+  the calibration section for a separate helper.
 - Not implemented: I3C, the chip's self-test, the in-band interrupt, pad drive
   strength, the I2C watchdog and the always-on sensortime option.
 - The INT pin setters write the right register bits in the mock test. No test
