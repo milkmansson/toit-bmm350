@@ -4,23 +4,22 @@
 
 import gpio
 import i2c
-import bmm350 show *
-import math
+import bmm350 show Bmm350
 
 READS := 100
-SDA-PIN := 19
+SDA-PIN := 21
 SCL-PIN := 20
 
 main:
   print
   print
   bus := i2c.Bus
-    --sda=gpio.Pin SDA-PIN
-    --scl=gpio.Pin SCL-PIN
+    --sda=SDA-PIN // gpio.Pin SDA-PIN
+    --scl=SCL-PIN // gpio.Pin SCL-PIN
     --frequency=400_000
 
   if not (bus.test Bmm350.I2C-ADDRESS):
-    print "Bus missing the device. stopping..."
+    print "No BMM350 found on the bus. Check the wiring and the I2C address."
     return
 
   device := bus.device Bmm350.I2C-ADDRESS

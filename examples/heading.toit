@@ -1,0 +1,36 @@
+// Copyright (C) 2026 Toit Contributors
+// Use of this source code is governed by a Zero-Clause BSD license that can
+// be found in the EXAMPLES_LICENSE file.
+
+// A bare-bones compass: the angle of the field in the X-Y plane.
+//
+// This only works while the board is held level, and it has no calibration for
+// nearby steel or magnets. Which way the board points at 0 degrees depends on
+// how the chip sits on your breakout.
+
+import gpio
+import i2c
+import math
+import bmm350 show Bmm350
+
+SDA-PIN ::= 19
+SCL-PIN ::= 20
+
+main:
+  bus := i2c.Bus
+    --sda=gpio.Pin SDA-PIN
+    --scl=gpio.Pin SCL-PIN
+    --frequency=400_000
+
+  if not (bus.test Bmm350.I2C-ADDRESS):
+    print "No BMM350 found on the bus. Check the wiring and the I2C address."
+    return
+
+  sensor := Bmm350 (bus.device Bmm350.I2C-ADDRESS) --odr=Bmm350.ODR-25HZ --avg=Bmm350.AVG-8-SAMPLES
+
+  while true:
+    field := sensor.read-mag-compensated
+    heading := (math.atan2 field.y field.x) * 180.0 / math.PI
+    if heading < 0.0: heading += 360.0
+    print "Heading $(%.0f heading) degrees"
+    sleep --ms=200

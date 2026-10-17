@@ -1,0 +1,5 @@
+prefixes:
+  bmm350: ..
+packages:
+  ..:
+    path: ..
