@@ -32,8 +32,10 @@ has been tried with this driver:
 
 Four wires: power, ground, SDA and SCL. The I2C address is 0x14 when the ADSEL
 pin is low and 0x15 when it is high. Change the pin numbers to match your board
-when using the examples. A fifth wire, from the chip's INT pin to a free GPIO, is
-only needed for `data-ready-interrupt.toit` and the INT pin checks in the tests.
+when using the examples. A fifth wire, from the chip's INT pin to a free GPIO,
+fires when a new measurement is ready.  That lets the ESP32 wait on the pin, or
+sleep and wake on it, without asking the chip over I2C every few milliseconds
+whether there is data.  The example `data-ready-interrupt.toit` covers this.
 
 The chip itself takes "VDD supply voltage range: 1.72V to 1.98V" and "VDDIO
 interface voltage range: 1.72V to 3.6V" (datasheet). A breakout board will
