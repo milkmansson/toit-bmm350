@@ -18,8 +18,8 @@ Some ideas that go beyond the datasheet's list. They are suggestions, and none
 has been tried with this driver:
 
 - A compass or heading indicator. You will need a calibration for steel and
-  magnets near the sensor. The driver does not apply one, and `src/calibration.toit`
-  is a helper for making one.
+  magnets near the sensor. `src/calibration.toit` is a helper for making one, and
+  the driver applies it if you pass it with `--calibration`.
 - Sensing a magnet, for example on a lid, a door or a knob. The datasheet gives
   the field range as "±2000µT".
 - A magnetic joystick or position sensor, with a magnet on the moving part.
@@ -65,7 +65,8 @@ of them and every value comes from the same instant. Call them without an
 argument and each call waits for a fresh measurement.
 
 `read-mag-compensated` applies the offset, gain, temperature and cross-axis
-corrections that Bosch stores in the chip. `read-mag` skips them and is mostly
+corrections that Bosch stores in the chip. If you gave the driver a calibration
+(see below), it is applied last. `read-mag` skips all of them and is mostly
 useful for comparison. `read-temp` applies the temperature trim too.
 
 Sensortime is a 24-bit counter with 39.0625 µs per tick, a figure taken from
@@ -118,10 +119,12 @@ All examples use the pins from the wiring section.
 The chip's own trim values do not remove what the rest of the board adds to
 the field. A magnet, a steel screw or a wire with current in it shifts the
 reading by an amount that turns with the board. `src/calibration.toit` has two
-small classes for that. It is a separate import, and the driver does not use it
-yet:
+small classes for that. Give a `MagCalibration` to the driver with the
+`--calibration` argument, and `read-mag-compensated` applies it after the chip's
+own corrections:
 
 ```
+import bmm350
 import bmm350.calibration show MagCalibration
 
 CALIBRATION ::= MagCalibration
@@ -134,8 +137,15 @@ CALIBRATION ::= MagCalibration
 
 main:
   ...
-  field := CALIBRATION.apply sensor.read-mag-compensated
+  sensor := bmm350.Bmm350
+      bus.device bmm350.Bmm350.I2C-ADDRESS
+      --calibration=CALIBRATION
+  print sensor.read-mag-compensated  // Corrected for the board as well.
 ```
+
+`read-mag` never applies it. You can also set `sensor.calibration = ...` at any
+time, and `null` takes it away again. Without a calibration the driver behaves
+as before. To apply one by hand, call `CALIBRATION.apply` on a reading.
 
 `MagCalibrator` collects readings and works out the offsets and the axis
 scales with the min/max method. It is a common technique, and it comes from
@@ -189,8 +199,8 @@ They are described in [tests/README.md](tests/README.md).
 ## Limits
 
 - The datasheet gives a zero-field offset drift of "±25" µT before or after
-  soldering. Compass work needs a calibration, which this driver does not apply. See
-  the calibration section for a separate helper.
+  soldering. Compass work needs a calibration. The driver applies one only if you
+  pass it with `--calibration`. See the calibration section for how to make it.
 - Not implemented: I3C, the chip's self-test, the in-band interrupt, pad drive
   strength, the I2C watchdog and the always-on sensortime option.
 - The mock test only checks that the INT pin setters write the right register
@@ -217,10 +227,6 @@ If you find a problem or have a change to suggest, please
 
 - [Florian](https://github.com/floitsch) for help and encouragement.
 - The wider Toit developer team, past and present, for a truly excellent product.
-- AI helped with code and text reviews, with analysing and compiling data and
-  results, and with checking accuracy. Several parts of the Bosch source code
-  were too hard for me to decipher and convert, and it has been a long time
-  since high-school calculus.
 
 ## About Toit
 

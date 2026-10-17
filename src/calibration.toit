@@ -24,6 +24,10 @@ This class holds two corrections:
 The two corrections come from the min/max method, which is a common technique
   and not something from the datasheet or from Bosch. See $MagCalibrator.
 
+Pass a calibration to the driver with the `--calibration` argument of the
+  constructor, or set it later with `sensor.calibration = ...`, and the driver
+  applies it in `read-mag-compensated`.
+
 The calibration belongs to the whole assembly, not to the chip alone. Moving
   the sensor, changing the battery or adding a wire can change it. A
   second board built the same way will probably need its own.

@@ -22,6 +22,7 @@ import log
 import bmm350 show *
 import .golden-vectors
 import .mock-bmm350
+import bmm350.calibration show MagCalibration
 import .test-helpers
 
 REG-AGGR-SET ::= 0x04
@@ -44,10 +45,11 @@ TEMP-TOLERANCE ::= 0.001
 new-sensor mock/MockBmm350Device -> Bmm350
     --otp/List?=null
     --odr/int=Bmm350.ODR-400HZ
-    --avg/int=Bmm350.AVG-NONE:
+    --avg/int=Bmm350.AVG-NONE
+    --calibration/MagCalibration?=null:
   if otp: otp.size.repeat: mock.registers.otp-words[it] = otp[it]
   logger := log.default.with-level log.ERROR-LEVEL
-  return Bmm350 mock --odr=odr --avg=avg --logger=logger
+  return Bmm350 mock --odr=odr --avg=avg --calibration=calibration --logger=logger
 
 // Puts the chip in suspend mode, so that no samples arrive on their own.
 suspended mock/MockBmm350Device -> Bmm350:
@@ -426,5 +428,56 @@ main:
   run.check "refuses to disable every axis":
     sensor := new-sensor MockBmm350Device
     require-throw "At least one axis must stay enabled": sensor.enable-axis --x=false --y=false --z=false
+
+  run.section "Calibration"
+
+  calibration := MagCalibration
+      --offset-x=3.0
+      --offset-y=-2.0
+      --offset-z=1.0
+      --scale-x=1.1
+      --scale-y=0.9
+      --scale-z=1.2
+  golden := GOLDEN-CASES[0]
+
+  run.check "the constructor argument corrects compensated readings only":
+    plain := new-sensor MockBmm350Device --otp=golden["otp"]
+    corrected := new-sensor MockBmm350Device --otp=golden["otp"] --calibration=calibration
+    bytes := golden["raw"]
+    expected := calibration.apply (plain.read-mag-compensated bytes)
+    got := corrected.read-mag-compensated bytes
+    require-close expected.x got.x 1.0e-9 "x"
+    require-close expected.y got.y 1.0e-9 "y"
+    require-close expected.z got.z 1.0e-9 "z"
+    require-equals (plain.read-mag bytes).x (corrected.read-mag bytes).x
+    require-equals (plain.read-mag bytes).y (corrected.read-mag bytes).y
+    require-equals (plain.read-mag bytes).z (corrected.read-mag bytes).z
+
+  run.check "a calibration can be set and removed later":
+    sensor := new-sensor MockBmm350Device --otp=golden["otp"]
+    bytes := golden["raw"]
+    before := sensor.read-mag-compensated bytes
+    sensor.calibration = calibration
+    expected := calibration.apply before
+    got := sensor.read-mag-compensated bytes
+    require-close expected.x got.x 1.0e-9 "x"
+    require-close expected.y got.y 1.0e-9 "y"
+    require-close expected.z got.z 1.0e-9 "z"
+    sensor.calibration = null
+    after := sensor.read-mag-compensated bytes
+    require-equals before.x after.x
+    require-equals before.y after.y
+    require-equals before.z after.z
+
+  run.check "a disabled axis still reads zero with a calibration":
+    mock := MockBmm350Device
+    sensor := new-sensor mock --calibration=calibration
+    mock.registers.raw-x = 1000
+    mock.registers.raw-y = 2000
+    mock.registers.raw-z = 3000
+    sensor.enable-axis --z=false
+    bytes := sensor.read-raw-data
+    require-equals 0.0 (sensor.read-mag-compensated bytes).z
+    require (sensor.read-mag-compensated bytes).x != 0.0
 
   run.finish

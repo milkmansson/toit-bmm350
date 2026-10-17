@@ -7,6 +7,8 @@ import serial
 import log
 import math show Point3f
 
+import .calibration show MagCalibration
+
 /**
 Toit driver for the Bosch Sensortec BMM350 magnetometer.
 
@@ -28,6 +30,13 @@ main:
   sensor := bmm350.Bmm350 (bus.device bmm350.Bmm350.I2C-ADDRESS)
   print sensor.read-mag-compensated
 ```
+
+# Calibration
+The chip's factory trim values fix errors inside the chip, and the driver
+  applies them in $read-mag-compensated. What the rest of the board adds to the
+  field is different for every board. Pass a $MagCalibration with the
+  constructor's `--calibration` argument and $read-mag-compensated applies that
+  as well. $read-mag never does.
 
 # Reading data
 Each call to $read-raw-data returns one burst of bytes that holds a single
@@ -288,6 +297,15 @@ class Bmm350:
   // The OTP command byte that powers the OTP memory off (0x80).
   static OTP-POWER-OFF_ ::= OTP-CMD-PWR-OFF-OTP_ << 5
 
+  /**
+  The calibration that $read-mag-compensated applies after the chip's own
+    corrections, or null for none.
+
+  It can be set or removed at any time. A calibration belongs to the whole
+    assembly, not to the chip alone.
+  */
+  calibration/MagCalibration? := null
+
   dev_/serial.Device := ?
   reg_/serial.Registers := ?
   logger_/log.Logger := ?
@@ -303,12 +321,18 @@ class Bmm350:
     combinations, listed by $max-avg-for-odr. When $avg is higher than the rate
     allows, the driver lowers it to the highest value that works.
 
+  With a $calibration, $read-mag-compensated also corrects the field for the
+    board the chip sits on. Leave it out to get the field as the chip reports
+    it, with only the factory corrections.
+
   Throws an exception if the chip does not answer with the BMM350 chip ID.
   */
   constructor device/serial.Device
       --odr/int=ODR-400HZ
       --avg/int=AVG-NONE
+      --calibration/MagCalibration?=null
       --logger/log.Logger=log.default:
+    this.calibration = calibration
     dev_ = device
     reg_ = device.registers
     logger_ = logger.with-name "bmm350"
@@ -547,8 +571,9 @@ class Bmm350:
     temperature drift and cross-axis effects.
 
   The corrections use the trim values stored in the chip's OTP memory. The
-    math follows the Bosch reference code. Disabled axes (see $enable-axis)
-    read as 0.0.
+    math follows the Bosch reference code. If a $calibration is set, it is
+    applied last. Disabled axes (see $enable-axis) read as 0.0, with or without
+    a calibration.
   */
   read-mag-compensated bytes/ByteArray=read-raw-data -> Point3f:
     counts := mag-uncompensated_ bytes
@@ -557,6 +582,12 @@ class Bmm350:
     x := (axes_ & ENABLE-X_) != 0 ? out[0] : 0.0
     y := (axes_ & ENABLE-Y_) != 0 ? out[1] : 0.0
     z := (axes_ & ENABLE-Z_) != 0 ? out[2] : 0.0
+    board := calibration
+    if board:
+      corrected := board.apply x y z
+      x = (axes_ & ENABLE-X_) != 0 ? corrected.x : 0.0
+      y = (axes_ & ENABLE-Y_) != 0 ? corrected.y : 0.0
+      z = (axes_ & ENABLE-Z_) != 0 ? corrected.z : 0.0
     return Point3f x y z
 
   // The three axes in µT, before compensation. Disabled axes count as zero.

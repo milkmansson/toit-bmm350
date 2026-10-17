@@ -64,7 +64,7 @@ main:
   display := open-display bus --rotation=DISPLAY-ROTATION --flip=DISPLAY-FLIP
   portrait := is-portrait DISPLAY-ROTATION
 
-  sensor := Bmm350 (bus.device Bmm350.I2C-ADDRESS)
+  sensor := Bmm350 (bus.device Bmm350.I2C-ADDRESS) --calibration=CALIBRATION
       --odr=Bmm350.ODR-50HZ
       --avg=Bmm350.AVG-4-SAMPLES
 
@@ -87,7 +87,7 @@ main:
   last-draw := Time.monotonic-us
   last-print := last-draw
   while true:
-    field := CALIBRATION.apply sensor.read-mag-compensated
+    field := sensor.read-mag-compensated
     // A mirrored chip reverses the sense of the Y axis for the compass.
     compass-y := MIRROR ? -field.y : field.y
     compass.update field.x compass-y --rotate-degrees=ROTATE-DEGREES
