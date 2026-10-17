@@ -176,58 +176,8 @@ keep one per device in a file or in flash.
 
 ## Tests
 
-### Without hardware
-
-```
-cd tests
-toit pkg install
-toit bmm350-mock-test.toit
-```
-
-The mock test runs against a simulated chip in `tests/mock-bmm350.toit`. The
-simulation returns the two dummy bytes on every read, refuses power commands
-that the datasheet says are illegal, applies rate changes only after the update
-command, and wraps sensortime at 24 bits.
-
-The compensation checks compare the driver with numbers from Bosch's own
-sensor API. `tests/golden/bmm350-golden.c` feeds made-up trim words and raw
-bytes into Bosch's code, and `tests/golden-vectors.toit` holds what came back.
-To regenerate the file, put Bosch's API files in `.reference/` and run:
-
-```
-cd tests/golden
-gcc -std=gnu99 -I../../.reference -o bmm350-golden bmm350-golden.c -lm
-./bmm350-golden > ../golden-vectors.toit
-```
-
-The test exits with a non-zero code when a check fails, so it can run in CI.
-
-`tests/calibration-test.toit` checks the calibration maths without any
-hardware. It builds readings from a sphere with a known offset and known axis
-sensitivities, and checks that the calibrator finds them again.
-
-### On the board
-
-```
-jag run tests/bmm350-hardware-test.toit
-```
-
-Keep the board still and away from motors, magnets and steel while it runs. The
-test checks the chip ID, the temperature and field ranges, every rate and
-averaging pair, the sensortime step at six rates, the chip clock against the
-ESP32 clock, noise at 100 Hz, forced mode, axis switching, magnetic reset and
-soft reset.
-
-Each line ends in PASS, FAIL, WARN or SKIP. A FAIL points at the driver, the
-wiring or the chip. A WARN means a value looks odd without being wrong, usually
-because of the surroundings. Limits from the datasheet are named in the source.
-The others are choices made for this test and are marked as such at the top of
-the file.
-
-Set `ROTATE-TEST` to `true` to add a hands-on check. It asks you to turn the
-board through every orientation for 20 seconds, then compares how constant the
-field strength stays with and without compensation. It also prints the middle of
-each axis's range, which is a starting point for your own hard-iron calibration.
+The tests are for working on the driver, and you do not need them to use it.
+They are described in [tests/README.md](tests/README.md).
 
 ## Limits
 
@@ -236,8 +186,8 @@ each axis's range, which is a starting point for your own hard-iron calibration.
   the calibration section for a separate helper.
 - Not implemented: I3C, the chip's self-test, the in-band interrupt, pad drive
   strength, the I2C watchdog and the always-on sensortime option.
-- The INT pin setters write the right register bits in the mock test. No test
-  has watched the pin itself.
+- The INT pin setters are only checked for the right register bits. No test has
+  watched the pin itself.
 
 ## Links
 
